@@ -165,7 +165,7 @@ class ExplainerBase(nn.Module):
                 edges with transparancy indicating the importance of edges.
                 (default: :obj:`None`)
             **kwargs (optional): Additional arguments passed to
-                :func:`nx.draw`.
+                :func:`nx.draw_networkx_nodes` and :func:`nx.draw_networkx_labels`.
 
         :rtype: :class:`matplotlib.axes.Axes`, :class:`networkx.DiGraph`
         """
@@ -223,6 +223,21 @@ class ExplainerBase(nn.Module):
         kwargs['node_size'] = kwargs.get('node_size') or 250
         kwargs['cmap'] = kwargs.get('cmap') or 'cool'
 
+        # Fix for issue #242
+        # Extra kwd forbidden for draw_networkx_nodes and draw_networkx_labels since version 2.5 of NetworkX
+        if hasattr(nx, '__version__'):
+            nx_version = tuple([int(c) for c in nx.__version__.split('.')[:2] if c.isdigit()])
+        else:
+            nx_version = (0, 0) # keeping the last way of this method ie nx.__version__ < 2.5
+        
+        if nx_version >= (2, 5):
+            # keeping only autorized parameters of '.draw_networkx_nodes()' as defined here (v 3.3) : https://networkx.org/documentation/networkx-3.3/reference/generated/networkx.drawing.nx_pylab.draw_networkx_nodes.html
+            draw_networkx_nodes_parameters = ['nodelist', 'node_size', 'node_color', 'node_shape', 'alpha', 'cmap', 'vmin', 'vmax', 'ax', 'linewidths', 'edgecolors', 'label', 'margins', 'hide_ticks']
+            kwargs_nodes = {k:kwargs[k] for k in draw_networkx_nodes_parameters if k in kwargs}
+        else:    
+            kwargs_nodes = kwargs
+        # /Fix
+
         # calculate Graph positions
         pos = nx.kamada_kawai_layout(G)
         ax = plt.gca()
@@ -235,24 +250,32 @@ class ExplainerBase(nn.Module):
                     lw=max(data['att'], 0.5) * 2,
                     alpha=max(data['att'], 0.4),  # alpha control transparency
                     color='#e1442a',  # color control color
-                    shrinkA=sqrt(kwargs['node_size']) / 2.0,
-                    shrinkB=sqrt(kwargs['node_size']) / 2.0,
+                    shrinkA=sqrt(kwargs_nodes['node_size']) / 2.0,
+                    shrinkB=sqrt(kwargs_nodes['node_size']) / 2.0,
                     connectionstyle="arc3,rad=0.08",  # rad control angle
                 ))
-        nx.draw_networkx_nodes(G, pos, node_color=node_colors, **kwargs)
+        nx.draw_networkx_nodes(G, pos, node_color=node_colors, **kwargs_nodes)
         # define node labels
+        # Fix for issue #242
+        if nx_version >= (2, 5):
+            # keeping only autorized parameters of '.draw_networkx_labels()' as defined here (v 3.3) : https://networkx.org/documentation/networkx-3.3/reference/generated/networkx.drawing.nx_pylab.draw_networkx_labels.html
+            draw_networkx_labels_parameters = ['labels', 'font_size', 'font_color', 'font_family', 'font_weight', 'alpha', 'bbox', 'horizontalalignment', 'verticalalignment', 'ax', 'clip_on', 'hide_ticks']
+            kwargs_labels = {k:kwargs[k] for k in draw_networkx_labels_parameters if k in kwargs}
+        else:
+            kwargs_labels = kwargs
+        # /Fix
         if self.molecule:
             if nolabel:
                 node_labels = {n: f'{self.table(atomic_num[n].int().item())}'
                                for n in G.nodes()}
-                nx.draw_networkx_labels(G, pos, labels=node_labels, **kwargs)
+                nx.draw_networkx_labels(G, pos, labels=node_labels, **kwargs_labels)
             else:
                 node_labels = {n: f'{n}:{self.table(atomic_num[n].int().item())}'
                                for n in G.nodes()}
-                nx.draw_networkx_labels(G, pos, labels=node_labels, **kwargs)
+                nx.draw_networkx_labels(G, pos, labels=node_labels, **kwargs_labels)
         else:
             if not nolabel:
-                nx.draw_networkx_labels(G, pos, **kwargs)
+                nx.draw_networkx_labels(G, pos, **kwargs_labels)
 
         return ax, G
 
