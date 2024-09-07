@@ -218,6 +218,11 @@ class ExplainerBase(nn.Module):
         mapping = {k: i for k, i in enumerate(subset.tolist())}
         G = nx.relabel_nodes(G, mapping)
 
+        kwargs['with_labels'] = kwargs.get('with_labels') or True # Debug note : origin of issue #242
+        kwargs['font_size'] = kwargs.get('font_size') or 10
+        kwargs['node_size'] = kwargs.get('node_size') or 250
+        kwargs['cmap'] = kwargs.get('cmap') or 'cool'
+
         # Fix for issue #242
         # Extra kwd forbidden for draw_networkx_nodes and draw_networkx_labels since version 2.5 of NetworkX
         if hasattr(nx, '__version__'):
@@ -229,11 +234,7 @@ class ExplainerBase(nn.Module):
             # keeping only autorized parameters of '.draw_networkx_nodes()' as defined here (v 3.3) : https://networkx.org/documentation/networkx-3.3/reference/generated/networkx.drawing.nx_pylab.draw_networkx_nodes.html
             draw_networkx_nodes_parameters = ['nodelist', 'node_size', 'node_color', 'node_shape', 'alpha', 'cmap', 'vmin', 'vmax', 'ax', 'linewidths', 'edgecolors', 'label', 'margins', 'hide_ticks']
             kwargs_nodes = {k:kwargs[k] for k in draw_networkx_nodes_parameters if k in kwargs}
-        else:
-            kwargs['with_labels'] = kwargs.get('with_labels') or True # Debug note : origin of issue #242
-            kwargs['font_size'] = kwargs.get('font_size') or 10
-            kwargs['node_size'] = kwargs.get('node_size') or 250
-            kwargs['cmap'] = kwargs.get('cmap') or 'cool'
+        else:    
             kwargs_nodes = kwargs
         # /Fix       
 
